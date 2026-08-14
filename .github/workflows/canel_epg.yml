@@ -1,0 +1,37 @@
+name: Actualizar Canel EPG
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar-epg:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Instalar requests
+        run: pip install requests
+
+      - name: Generar Canel EPG
+        run: python generar_canel_epg.py
+
+      - name: Guardar canel_epg.xml
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add canel_epg.xml
+          git diff --cached --quiet || git commit -m "Actualizar Canel EPG"
+          git push
