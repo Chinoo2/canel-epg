@@ -47,12 +47,34 @@ print(f"Desde: {start}")
 print(f"Hasta: {end}")
 
 try:
-    r = requests.get(API, params=params, timeout=30)
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/151.0.0.0 Safari/537.36"
+        ),
+        "Accept": "application/json, text/plain, */*",
+        "Origin": "https://www.canela.tv",
+        "Referer": "https://www.canela.tv/",
+    }
+
+    r = requests.get(
+        API,
+        params=params,
+        headers=headers,
+        timeout=30
+    )
+
+    print(f"HTTP: {r.status_code}")
+
     r.raise_for_status()
+
     data = r.json()
+
 except Exception as e:
     print(f"ERROR consultando Canela: {e}")
     raise
+
 
 tv = Element(
     "tv",
@@ -61,6 +83,7 @@ tv = Element(
 
 programas_guardados = set()
 canales_encontrados = set()
+
 
 for canal in data.get("data", []):
 
@@ -80,7 +103,10 @@ for canal in data.get("data", []):
     nombre = CANALES[canal_id]
 
     if canal_id not in canales_encontrados:
-        print(f"Canal encontrado: {nombre} ({canal_id})")
+
+        print(
+            f"Canal encontrado: {nombre} ({canal_id})"
+        )
 
         ch = SubElement(
             tv,
@@ -88,10 +114,15 @@ for canal in data.get("data", []):
             id=canal_id
         )
 
-        dn = SubElement(ch, "display-name")
+        dn = SubElement(
+            ch,
+            "display-name"
+        )
+
         dn.text = nombre
 
         canales_encontrados.add(canal_id)
+
 
     for evento in airings:
 
@@ -102,6 +133,7 @@ for canal in data.get("data", []):
             continue
 
         try:
+
             fecha_inicio = datetime.fromisoformat(
                 inicio_str.replace("Z", "+00:00")
             )
@@ -109,11 +141,14 @@ for canal in data.get("data", []):
             fecha_fin = datetime.fromisoformat(
                 fin_str.replace("Z", "+00:00")
             )
+
         except ValueError:
             continue
 
+
         if fecha_fin < ahora_utc:
             continue
+
 
         clave = (
             canal_id,
@@ -126,37 +161,69 @@ for canal in data.get("data", []):
 
         programas_guardados.add(clave)
 
+
         pgm = evento.get("pgm", {})
 
-        # Título
+
+        # ==========================================
+        # TÍTULO
+        # ==========================================
+
         nombres = pgm.get("lon", [])
+
         titulo_texto = "Sin información"
 
         for item in nombres:
+
             if item.get("lang") == "es-MX":
-                titulo_texto = item.get("n", "Sin información")
+
+                titulo_texto = item.get(
+                    "n",
+                    "Sin información"
+                )
+
                 break
 
+
         if titulo_texto == "Sin información" and nombres:
+
             titulo_texto = nombres[0].get(
                 "n",
                 "Sin información"
             )
 
-        # Descripción
+
+        # ==========================================
+        # DESCRIPCIÓN
+        # ==========================================
+
         descripciones = pgm.get("lod", [])
+
         descripcion_texto = ""
 
         for item in descripciones:
+
             if item.get("lang") == "es-MX":
-                descripcion_texto = item.get("n", "")
+
+                descripcion_texto = item.get(
+                    "n",
+                    ""
+                )
+
                 break
 
+
         if not descripcion_texto and descripciones:
+
             descripcion_texto = descripciones[0].get(
                 "n",
                 ""
             )
+
+
+        # ==========================================
+        # PROGRAMA XMLTV
+        # ==========================================
 
         prog = SubElement(
             tv,
@@ -170,19 +237,28 @@ for canal in data.get("data", []):
             )
         )
 
+
         title = SubElement(
             prog,
             "title",
             lang="es"
         )
+
         title.text = titulo_texto
+
 
         desc = SubElement(
             prog,
             "desc",
             lang="es"
         )
+
         desc.text = descripcion_texto
+
+
+# ==========================================
+# GUARDAR XML
+# ==========================================
 
 ElementTree(tv).write(
     "canel_epg.xml",
@@ -190,10 +266,15 @@ ElementTree(tv).write(
     xml_declaration=True
 )
 
+
 print()
 print("====================================")
 print("Canel EPG generado correctamente")
 print("Archivo: canel_epg.xml")
-print(f"Canales: {len(canales_encontrados)}/7")
-print(f"Programas: {len(programas_guardados)}")
+print(
+    f"Canales: {len(canales_encontrados)}/7"
+)
+print(
+    f"Programas: {len(programas_guardados)}"
+)
 print("====================================")
